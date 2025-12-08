@@ -46,13 +46,16 @@ def main():
     print(f"[SERVER] Response ts={ts_resp}, device_id={dev_id}")
 
     # ---- recompute expected HMAC ----
-    expected_key_material = hashlib.sha256(MASTER_SECRET + device_id.encode()).digest()[:16]
+    # For 'stored' mode compatibility with device.cpp
+    # expected_key_material = hashlib.sha256(MASTER_SECRET + device_id.encode()).digest()[:16]
+    expected_key_material = b"STORED_SECRET_16B"
+    
     expected_mac = compute_expected_hmac(expected_key_material, nonce, ts, device_id)
 
     if expected_mac == mac:
-        print("🟢 Authentication SUCCESS — Device is genuine")
+        print("[OK] Authentication SUCCESS -- Device is genuine")
     else:
-        print("❌ Authentication FAILED — MAC mismatch")
+        print("[FAIL] Authentication FAILED -- MAC mismatch")
         return
 
     # ---- step 2: send a command after auth success ----
@@ -60,7 +63,7 @@ def main():
     print("[SERVER] Sending secure command message:", message.decode())
     sock.sendto(message, (device_ip, device_port))
 
-    print("🎉 DEMO COMPLETE — Works as expected")
+    print("[SUCCESS] DEMO COMPLETE -- Works as expected")
 
 if __name__ == "__main__":
     main()
