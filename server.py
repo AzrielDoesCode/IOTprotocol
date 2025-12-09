@@ -35,7 +35,7 @@ def main():
         resp, addr = sock.recvfrom(512)
         print(f"[SERVER] Got response from {addr}: {resp.hex()}")
     except socket.timeout:
-        print("❌ Device not responding (timeout)")
+        print("Device not responding (timeout)")
         return
 
     # ---- parse response ----
