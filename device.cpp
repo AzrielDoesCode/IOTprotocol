@@ -346,6 +346,13 @@ int main(int argc, char **argv) {
       continue;
     }
 
+    // Check for "HELLO_" command to avoid interpreting it as a challenge
+    if (n >= 12 && memcmp(buf, "HELLO_", 6) == 0) {
+      cout << "[Device] Received verified command: " << string((char *)buf, n)
+           << "\n";
+      continue;
+    }
+
     uint64_t nonce = 0;
     uint32_t ts = 0;
     for (int i = 0; i < 8; ++i)
