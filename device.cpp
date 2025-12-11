@@ -47,6 +47,13 @@ static const size_t HMAC_TRUNC_BYTES = 8; // 64-bit truncated HMAC
 static const uint32_t TS_WINDOW_SEC = 10; // timestamp freshness window
 static const string MASTER_SECRET = "MASTER_STATIC_SECRET"; // demo only
 
+// Helper for IP:Port string
+string ip_port(const sockaddr_in &addr) {
+  char buf[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &addr.sin_addr, buf, sizeof(buf));
+  return string(buf) + ":" + to_string(ntohs(addr.sin_port));
+}
+
 //////////////////////////////
 // Utilities
 //////////////////////////////
@@ -235,6 +242,38 @@ private:
 };
 
 //////////////////////////////
+// Audit Logger
+//////////////////////////////
+class AuditLogger {
+public:
+  AuditLogger(const string &folder) : folder(folder) {
+    ensure_dir_exists(folder);
+    log_path = folder + "/audit_log.csv";
+    ofstream f(log_path, ios::app);
+    // Write header if file is empty
+    if (f.tellp() == 0) {
+      f << "Timestamp,Event,Source,Details\n";
+    }
+  }
+
+  void log(const string &event, const string &source, const string &details) {
+    time_t now = time(nullptr);
+    struct tm *t = localtime(&now);
+
+    ofstream f(log_path, ios::app);
+    if (!f)
+      return;
+
+    f << put_time(t, "%Y-%m-%d %H:%M:%S") << "," << event << "," << source
+      << "," << details << "\n";
+  }
+
+private:
+  string folder;
+  string log_path;
+};
+
+//////////////////////////////
 // Device main
 //////////////////////////////
 int main(int argc, char **argv) {
@@ -244,6 +283,8 @@ int main(int argc, char **argv) {
   double flip_prob = 0.02;
   size_t cache_max = 5000;
   string base_folder = "./DEVICE";
+
+  cout << unitbuf; // Disable output buffering
 
   for (int i = 1; i < argc; ++i) {
     string a = argv[i];
@@ -300,6 +341,9 @@ int main(int argc, char **argv) {
 
   PUFEmulator puf(device_id);
   ReplayCache rcache(folder, cache_max);
+  AuditLogger logger(folder);
+
+  logger.log("STARTUP", "Local", "Device started in mode=" + mode);
 
   int sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
@@ -346,10 +390,11 @@ int main(int argc, char **argv) {
       continue;
     }
 
-    // Check for "HELLO_" command to avoid interpreting it as a challenge
+    // Check for "HELLO_" command
     if (n >= 12 && memcmp(buf, "HELLO_", 6) == 0) {
-      cout << "[Device] Received verified command: " << string((char *)buf, n)
-           << "\n";
+      string cmd((char *)buf, n);
+      cout << "[Device] Received verified command: " << cmd << "\n";
+      logger.log("COMMAND_RX", ip_port(peer), cmd);
       continue;
     }
 
@@ -362,6 +407,7 @@ int main(int argc, char **argv) {
 
     if (rcache.is_replay(ts)) {
       cout << "[Device] Reject (replay/stale) ts=" << ts << "\n";
+      logger.log("REPLAY_REJECT", ip_port(peer), "ts=" + to_string(ts));
       continue;
     }
 
@@ -405,6 +451,7 @@ int main(int argc, char **argv) {
     inet_ntop(AF_INET, &peer.sin_addr, peer_ip, sizeof(peer_ip));
     cout << "[Device] RESP sent to " << peer_ip << ":" << ntohs(peer.sin_port)
          << " ts=" << ts_resp << "\n";
+    logger.log("AUTH_SUCCESS", ip_port(peer), "Response sent");
   }
 
   SOCKET_CLOSE(sock);
