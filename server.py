@@ -63,7 +63,7 @@ def main():
     print("[SERVER] Sending secure command message:", message.decode())
     sock.sendto(message, (device_ip, device_port))
     
-    print("[SUCCESS] DEMO COMPLETE -- Works as expected")
+    print("[SUCCESS] DEMO COMPLETE ")
 
 if __name__ == "__main__":
     main()
