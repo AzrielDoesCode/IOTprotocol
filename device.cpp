@@ -378,8 +378,6 @@ int main(int argc, char **argv) {
     sockaddr_in peer;
     socklen_t plen = sizeof(peer);
 
-    // cast plen to int* for winsock if needed, but socklen_t* is cleaner if
-    // typedef matches
     ssize_t n =
         recvfrom(sock, (char *)buf, sizeof(buf), 0, (sockaddr *)&peer, &plen);
     if (n < 0) {
