@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Protocol - Security Demos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080f1e;
+            --term-bg: rgba(15, 23, 42, 0.85);
+            --term-border: rgba(255, 255, 255, 0.1);
+            --text-color: #e2e8f0;
+            --accent-green: #4ade80;
+            --accent-blue: #60a5fa;
+            --accent-yellow: #facc15;
+            --accent-purple: #c084fc;
+            --accent-red: #f87171;
+            --accent-cyan: #22d3ee;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.15), transparent 25%);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+            padding: 40px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .scenario {
+            max-width: 1400px;
+            margin: 0 auto 80px auto;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 40px;
+            position: relative;
+        }
+
+        .scenario-title {
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge.secure { background: rgba(74, 222, 128, 0.2); color: var(--accent-green); }
+        .badge.threat { background: rgba(248, 113, 113, 0.2); color: var(--accent-red); }
+
+        .terminal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .terminal {
+            background: var(--term-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--term-border);
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05) inset;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--term-border);
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .control { width: 12px; height: 12px; border-radius: 50%; }
+        .close { background: #ef4444; }
+        .minimize { background: #eab308; }
+        .maximize { background: #22c55e; }
+
+        .terminal-title {
+            margin: 0 auto;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            padding-right: 44px;
+        }
+
+        .terminal-body {
+            padding: 24px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            min-height: 250px;
+        }
+
+        .line {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        /* Syntax Colors */
+        .cmd { color: #f8fafc; font-weight: 500; }
+        .prompt { color: var(--accent-purple); margin-right: 8px; }
+        .info { color: var(--accent-blue); }
+        .success { color: var(--accent-green); font-weight: 700; }
+        .warning { color: var(--accent-yellow); }
+        .error { color: var(--accent-red); font-weight: 700; }
+        .cyan { color: var(--accent-cyan); }
+        .dim { color: #64748b; }
+        
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: var(--text-color);
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+            margin-left: 4px;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Animation class to trigger typing effect on scroll */
+        .animate-lines .line {
+            opacity: 0;
+            animation: slideUpFade 0.4s ease forwards;
+        }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Sequential delays */
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.6s; }
+        .delay-4 { animation-delay: 0.8s; }
+        .delay-5 { animation-delay: 1.0s; }
+        .delay-6 { animation-delay: 1.2s; }
+        .delay-7 { animation-delay: 1.4s; }
+        .delay-8 { animation-delay: 1.6s; }
+        .delay-9 { animation-delay: 1.8s; }
+        .delay-10 { animation-delay: 2.0s; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>IoT Security Protocol</h1>
+        <p>Demonstrating robust, lightweight authentication mechanisms against common network threats including Replay Attacks and Device Impersonation.</p>
+    </div>
+
+    <!-- Scenario 1: Golden Path -->
+    <div class="scenario">
+        <h2 class="scenario-title">
+            1. Authentic Communication
+            <span class="badge secure">Secure Session</span>
+        </h2>
+        <div class="terminal-grid">
+            <div class="terminal animate-lines">
+                <div class="terminal-header">
+                    <div class="window-controls"><div class="control close"></div><div class="control minimize"></div><div class="control maximize"></div></div>
+                    <div class="terminal-title">server.py</div>
+                </div>
+                <div class="terminal-body">
+                    <span class="line delay-1"><span class="prompt">server@host:~$</span><span class="cmd">python server.py</span></span>
+                    <span class="line delay-2"><span class="info">[SERVER]</span> starting...</span>
+                    <span class="line delay-3"><span class="info">[SERVER]</span> Sending challenge: nonce=1778418994505, ts=1778418994</span>
+                    <span class="line delay-6"><span class="info">[SERVER]</span> Got response from ('127.0.0.1', 12001): f37b377e2e190be7...</span>
+                    <span class="line delay-7"><span class="info">[SERVER]</span> Response ts=1778418994, device_id=DEV01</span>
+                    <span class="line delay-8"><span class="success">[OK] Authentication SUCCESS -- Device is genuine</span></span>
+                    <span class="line delay-9"><span class="info">[SERVER]</span> Sending secure command message: HELLO_DEVICE</span>
+                    <span class="line delay-10"><span class="success">[SUCCESS] DEMO COMPLETE</span></span>
+                </div>
+            </div>
+            <div class="terminal animate-lines">
+                <div class="terminal-header">
+                    <div class="window-controls"><div class="control close"></div><div class="control minimize"></div><div class="control maximize"></div></div>
+                    <div class="terminal-title">device.exe</div>
+                </div>
+                <div class="terminal-body">
+                    <span class="line delay-1"><span class="prompt">device@edge:~$</span><span class="cmd">./device.exe --mode puf</span></span>
+                    <span class="line delay-2"><span class="info">[Device]</span> id=DEV01 mode=puf folder=./DEVICE/DEV01 build_id=987164313672</span>
+                    <span class="line delay-3"><span class="info">[Device]</span> Listening UDP port 12001</span>
+                    <span class="line delay-4"><span class="info">[Device]</span> <span class="dim">Received Challenge. Deriving PUF Key...</span></span>
+                    <span class="line delay-5"><span class="info">[Device]</span> RESP sent to 127.0.0.1:56018 ts=1778418994</span>
+                    <span class="line delay-10"><span class="info">[Device]</span> <span class="success">Received verified command: HELLO_DEVICE</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scenario 2: Replay Attack Defense -->
+    <div class="scenario">
+        <h2 class="scenario-title">
+            2. Replay Attack Defense
+            <span class="badge secure">Threat Blocked</span>
+        </h2>
+        <div class="terminal-grid">
+            <div class="terminal animate-lines">
+                <div class="terminal-header">
+                    <div class="window-controls"><div class="control close"></div><div class="control minimize"></div><div class="control maximize"></div></div>
+                    <div class="terminal-title">adversary.py</div>
+                </div>
+                <div class="terminal-body">
+                    <span class="line delay-1"><span class="prompt">kali@attacker:~$</span><span class="cmd">python adversary.py --attack replay</span></span>
+                    <span class="line delay-2"><span class="warning">[!] Preparing REPLAY ATTACK...</span></span>
+                    <span class="line delay-3"><span class="info">[+] Step 1: Intercepting VALID Challenge</span></span>
+                    <span class="line delay-4">    -> Sending: nonce=1892301923, ts=1778419050</span>
+                    <span class="line delay-6"><span class="success">[+] Device Responded: a9f81b...</span></span>
+                    <span class="line delay-7"><span class="warning">[!] Step 2: Executing REPLAY with captured payload...</span></span>
+                    <span class="line delay-8">    -> Resending IDENTICAL: nonce=1892301923, ts=1778419050</span>
+                    <span class="line delay-10"><span class="success">[+] No Response. Device BLOCKED the replay! (Protocol Secure)</span></span>
+                </div>
+            </div>
+            <div class="terminal animate-lines">
+                <div class="terminal-header">
+                    <div class="window-controls"><div class="control close"></div><div class="control minimize"></div><div class="control maximize"></div></div>
+                    <div class="terminal-title">device.exe</div>
+                </div>
+                <div class="terminal-body">
+                    <span class="line delay-1"><span class="info">[Device]</span> Listening UDP port 12001</span>
+                    <span class="line delay-5"><span class="info">[Device]</span> RESP sent to 127.0.0.1:44321 ts=1778419050</span>
+                    <span class="line delay-9"><span class="error">[Device] Reject (replay/stale) ts=1778419050</span></span>
+                    <span class="line delay-10"><span class="info">[Device]</span> Logged event: REPLAY_REJECT source=127.0.0.1:44321</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scenario 3: Impersonation Defense -->
+    <div class="scenario">
+        <h2 class="scenario-title">
+            3. Fake IoT Impersonation Defense
+            <span class="badge secure">Threat Blocked</span>
+        </h2>
+        <div class="terminal-grid">
+            <div class="terminal animate-lines">
+                <div class="terminal-header">
+                    <div class="window-controls"><div class="control close"></div><div class="control minimize"></div><div class="control maximize"></div></div>
+                    <div class="terminal-title">fake_iot.py</div>
+                </div>
+                <div class="terminal-body">
+                    <span class="line delay-1"><span class="prompt">kali@attacker:~$</span><span class="cmd">python fake_iot.py</span></span>
+                    <span class="line delay-2"><span class="warning">[FAKE DEVICE] Starting malicious emulator...</span></span>
+                    <span class="line delay-3"><span class="warning">[FAKE DEVICE] Impersonating: DEV01</span></span>
+                    <span class="line delay-4"><span class="warning">[FAKE DEVICE] Using Key: b'WRONG_SECRET_BYTES'</span></span>
+                    <span class="line delay-5"><span class="info">[FAKE DEVICE] Listening on UDP 12001...</span></span>
+                    <span class="line delay-6"><span class="info">[FAKE DEVICE] Intercepted challenge from ('127.0.0.1', 50112)</span></span>
+                    <span class="line delay-7"><span class="info">[FAKE DEVICE] Sent FAKE response (MAC=1b4a99c2...)</span></span>
+                </div>
+            </div>
+            <div class="terminal animate-lines">
+                <div class="terminal-header">
+                    <div class="window-controls"><div class="control close"></div><div class="control minimize"></div><div class="control maximize"></div></div>
+                    <div class="terminal-title">server.py</div>
+                </div>
+                <div class="terminal-body">
+                    <span class="line delay-1"><span class="prompt">server@host:~$</span><span class="cmd">python server.py</span></span>
+                    <span class="line delay-2"><span class="info">[SERVER]</span> starting...</span>
+                    <span class="line delay-3"><span class="info">[SERVER]</span> Sending challenge: nonce=8812341234, ts=1778419200</span>
+                    <span class="line delay-8"><span class="info">[SERVER]</span> Got response from ('127.0.0.1', 12001): 1b4a99c2...</span>
+                    <span class="line delay-9"><span class="info">[SERVER]</span> Response ts=1778419200, device_id=DEV01</span>
+                    <span class="line delay-10"><span class="error">[FAIL] Authentication FAILED -- MAC mismatch</span></span>
+                    <span class="line delay-10"><span class="error">[!] Connection aborted. Device impersonation detected.</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple Intersection Observer to trigger animations only when scrolled into view
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const lines = entry.target.querySelectorAll('.line');
+                    lines.forEach(line => {
+                        line.style.animationName = 'slideUpFade';
+                    });
+                }
+            });
+        }, { threshold: 0.2 });
+
+        document.querySelectorAll('.animate-lines').forEach(el => {
+            // Initially disable animation
+            el.querySelectorAll('.line').forEach(line => line.style.animationName = 'none');
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
